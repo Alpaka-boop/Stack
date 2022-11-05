@@ -5,76 +5,70 @@
 const char *errors_descr[] = {"The stack data pointer is null",
                              "The stack size is less than the stack capacity",
                              "Memory was not allocated",
-                             "A value was not pushed because memory was not allocated"};
+                             "A value was not pushed because memory was not allocated", 
+                             "The capacity of the stack is 0",
+                             "The stack size is less than 0",
+                             "No elements in the stack to pop",
+                             "There are few elements in the stack to do some operations",
+                             "Try to devide by 0 was made"};
 
 void Verificator (ST *st, int line, const char *fun, const char *file)
 {
     assert(st);
 
-    int errors = 0;
+    CHECK_ERR(st->data == NULL, ERR_NULL_DATA);
 
-    if (st->data == NULL)
-    {
-        STACKINIT(*st, START_SIZE_OF_STACK);
-        errors += ERR_NULL_DATA;
-    }
-
-    if (st->capacity < st->size)
-    {
-        errors += ERR_OVERSIZE;
-        // st->data = (elem_t *) realloc(st->data, st->size + 1);
-
-        // if (!st->data)
-        //     errors += ERR_ALL_MEM;
-        // else 
-        //     st->capacity = st->size + 1;
-    }
-
-    if (errors)   
-        ErrorPrinter(errors, line, fun, file);
-}
-
-int near_deg_2 (int num)
-{
-    int deg = 0;
-    int tmp = 1;
+    CHECK_ERR(st->capacity < st->size, ERR_OVERSIZE);
     
-    while (num > tmp)
+    CHECK_ERR(st->size < 0, ERR_MINUS_SIZE)
+
+    if (st->errors != 0 && st->errors_status != WAS_DUMPED)
     {
-        tmp *= 2;
-        deg++;
+        StackDump(st, file, fun, line);
+        st->errors_status = WAS_DUMPED;
     }
-    
-    return deg;
 }
 
 void ErrorPrinter (int errors, int line, const char *fun, const char *file)
 {
     FILE *log_file = NULL;
-    bool is_first = true;
+    int   err_num  = 0;
 
-    log_file = fopen(LOGFILENAME, "w+");
-
-    fprintf(log_file, "%s: %s: %i: errors:", file, fun, line);
+    log_file = fopen(LOGFILENAME, "a");
+    assert(log_file);
     
-    for (int i = 0; i < near_deg_2(errors); ++i)
+    while (errors > 0)
     {
-        if ((errors & (1 << (i + 1))) >> (i + 1))
-        {
-            if (is_first)
-            {
-                fprintf(log_file, " %s", errors_descr[i - 1]);
-                is_first = false;
-            }
+        if (errors % 2)
+            fprintf(log_file, "%s: %s: %i: error: %s\n", file, fun, line, errors_descr[err_num]);
 
-            else 
-            {
-                fprintf(log_file, ", %s", errors_descr[i - 1]);
-            }
-        }
+        errors /= 2;
+        err_num++;
     }
 
     fprintf(log_file, "\n");
 
     fclose(log_file);
+}
+
+void StackDump (ST *st, const char *curr_file, const char *curr_fun, int curr_line)
+{
+    FILE *file = nullptr;
+
+    file = fopen(LOGFILENAME, "a");
+
+    fprintf(file, "=======================================================\n");
+    fprintf(file, "%s: %s: %i:\n", curr_file, curr_fun, curr_line);
+    fprintf(file, "Stack info:\n");
+    fprintf(file, "\tCapacity: %lu\n", st->capacity);
+    fprintf(file, "\tSize: %lu\n", st->size);
+    fprintf(file, "\tErrors: %lu\n", st->errors);
+    fprintf(file, "\tVariable info:\n");
+    fprintf(file, "\t\tFile: %s\n", st->var_info.file_name);
+    fprintf(file, "\t\tFunc: %s\n", st->var_info.func_name);
+    fprintf(file, "\t\tLine: %i\n", st->var_info.line_num);
+    fprintf(file, "\t\tName: %s\n", st->var_info.var_name);
+    fprintf(file, "=======================================================\n\n");
+
+    fclose(file);
 }

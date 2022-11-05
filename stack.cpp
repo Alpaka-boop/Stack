@@ -1,18 +1,21 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #include "errors.h"
 #include "stack.h"
 
-void StackInit (ST *st, size_t capacity, const char *var_name, const char *func_name, const char *file_name, int line_num)
+size_t StackInit (ST *st, size_t capacity, const char *var_name, const char *func_name, const char *file_name, int line_num)
 {
     assert(st);
 
-    //TODO fill var info
-    //TODO FILL CAPACITY
+    CHECK_ERR(capacity == 0, ERR_NULL_CAP);
+
     st->size = 0;
     st->data = (elem_t *) calloc(capacity, sizeof(elem_t));
-    st->capacity = capacity;
-    
+    st->capacity = capacity * (st->data != NULL);
+    st->errors_status = NO_ERRORS;
+
+    CHECK_ERR(st->data == NULL, ERR_ALL_MEM);
 
     st->var_info.file_name = file_name;
     st->var_info.func_name = func_name;
@@ -20,6 +23,8 @@ void StackInit (ST *st, size_t capacity, const char *var_name, const char *func_
     st->var_info.var_name  = var_name;
 
     CHECK(st);
+
+    return st->errors;
 }
 
 size_t StackPush (ST *st, int value)
@@ -35,7 +40,7 @@ size_t StackPush (ST *st, int value)
         if (st->size < st->capacity)
             st->data[st->size++] = value;
         else 
-            st->errors |= ERR_PUSH_MEM;
+            CHECK_ERR(st->size >= st->capacity, ERR_PUSH_MEM);
     }
 
     CHECK(st);
@@ -43,111 +48,186 @@ size_t StackPush (ST *st, int value)
     return st->errors;
 }
 
-int StackResize(ST *st)
+size_t StackResize(ST *st)
 {
-    if (st->size >= st->capacity)
+    assert(st);
+    if (st->capacity == 0)
+    {
+        if (st->data == NULL)
+        {
+            st->data = (elem_t *) calloc(START_SIZE_OF_STACK, sizeof(elem_t));
+            CHECK_ERR(st->data == NULL, ERR_ALL_MEM);
+            st->capacity = START_SIZE_OF_STACK * (st->data != NULL);
+        }
+        else
+        {
+            st->data = (elem_t *) realloc(st->data, START_SIZE_OF_STACK);
+            CHECK_ERR(st->data == NULL, ERR_ALL_MEM);
+            st->capacity = START_SIZE_OF_STACK * (st->data != NULL);
+        }
+    }
+
+    else if (st->size >= st->capacity)
     {
         st->data = (elem_t *) realloc(st->data, st->capacity * 4);
+
+        CHECK_ERR(st->data == NULL, ERR_ALL_MEM);
         
         if (st->data != NULL)
             st->capacity *= 4;
     }
+
     else if (st->size < st->capacity / 2)
     {
         st->data = (elem_t *) realloc(st->data, st->capacity / 2 + 1);
+
+        CHECK_ERR(st->data == NULL, ERR_ALL_MEM);
 
         if (st->data != NULL)
             st->capacity = st->capacity / 2 + 1;
     }
 
-    return st->capacity;
+    return st->errors;
 }
 
-//TODO add check if empty
-//todo return by pointer
-//TODO ewerywhere return code_of_error
-
-int StackPop (ST *st, elem_t *value)
+size_t StackPop (ST *st, elem_t *value)
 {
     CHECK(st);
-    
-    int errors = 0;
 
-    *value = st->data[st->size];
+    CHECK_ERR(st->size == 0, ERR_NO_EL);
 
-    st->data[st->size] = DELITED_NUM;
-    st->size--;
+    if (st->data != NULL && st->size >= 1)
+    {
+        *value = st->data[st->size - 1];
+        st->data[st->size - 1] = DELITED_NUM;
+        st->size--;
+    }
 
     CHECK(st);
     StackResize(st);
 
-    return errors;
+    return st->errors;
 }
 
-//add recapacity :2 при попе *4 при пуше dump in 2 functions sump var info dump 
-
-void StackDelete (ST *st)
+size_t StackDelete (ST *st)
 {
     CHECK(st);
 
-    st->size = 0;
-    free(st->data);
-    st->capacity = 0;
+    if (st->data != NULL)
+    {
+        st->size = 0;
+        free(st->data);
+        st->capacity = 0;
+    }
+
+    return st->errors;
 }
 
-void Add (ST *st)
+size_t Add (ST *st)
+{
+    CHECK(st);
+    CHECK_ERR(st->size < 2, ERR_FEW_ELL);
+    
+    if (st->size > 1 && st->data != NULL)
+    {
+        int num1 = 0;
+        int num2 = 0;
+
+        StackPop(st, &num1);
+        StackPop(st, &num2);
+        StackPush(st, num1 + num2);
+    }
+
+    CHECK(st);
+    StackResize(st);
+
+    return st->errors;
+}
+
+size_t Sub (ST *st)
+{
+    CHECK(st);
+    CHECK_ERR(st->size < 2, ERR_FEW_ELL);
+    
+    if (st->size > 1 && st->data != NULL)
+    {
+        int num1 = 0;
+        int num2 = 0;
+
+        StackPop(st, &num1);
+        StackPop(st, &num2);
+        StackPush(st, num1 - num2);
+    }
+
+    CHECK(st);
+    StackResize(st);
+
+    return st->errors;
+}
+
+size_t Multi (ST *st)
+{
+    CHECK(st);
+    CHECK_ERR(st->size < 2, ERR_FEW_ELL);
+    
+    if (st->size > 1 && st->data != NULL)
+    {
+        int num1 = 0;
+        int num2 = 0;
+
+        StackPop(st, &num1);
+        StackPop(st, &num2);
+        StackPush(st, num1 * num2);
+    }
+
+    CHECK(st);
+    StackResize(st);
+
+    return st->errors;
+}
+
+size_t Div (ST *st)
+{
+    CHECK(st);
+    CHECK_ERR(st->size < 2, ERR_FEW_ELL);
+    
+    if (st->size > 1 && st->data != NULL)
+    {
+        int num1 = 0;
+        int num2 = 0;
+
+        StackPop(st, &num1);
+        StackPop(st, &num2);
+
+        CHECK_ERR(num1 == 0, ERR_DIV_NULL);
+
+        if (num1 != 0)
+        {
+            StackPush(st, num1 / num2);
+        }
+        else
+        {
+            StackPush(st, num2);
+            StackPush(st, num1);
+        }
+    }
+
+    StackResize(st);
+    CHECK(st);
+
+    return st->errors;
+}
+
+size_t Out (ST *st, int *value)
 {
     CHECK(st);
     
-    int num1 = 0;
-    int num2 = 0;
+    size_t errors = StackPop(st, value);
 
-    StackPop(st, &num1);
-    StackPop(st, &num2);
-    StackPush(st, num1 + num2);
-
-    CHECK(st);
-}
-
-void Sub (ST *st)
-{
-    CHECK(st);
-
-    int num1 = 0;
-    int num2 = 0;
-
-    StackPop(st, &num1);
-    StackPop(st, &num2);
-    StackPush(st, num2 - num1);
-
-    CHECK(st);
-}
-
-void Div (ST *st)
-{
-    CHECK(st);
-    
-    int num1 = 0;
-    int num2 = 0;
-
-    StackPop(st, &num1);
-    StackPop(st, &num2);
-    StackPush(st, num2 / num1);
-
-    CHECK(st);
-}
-
-int Out (ST *st)
-{
-    CHECK(st);
-
-    int value = 0;
-    
-    StackPop(st, &value);
-
-    printf("Last number in the stack: %i\n", value);
+    if (errors == 0)
+        printf("Last number in the stack: %i\n", *value);
 
     CHECK(st);
 
-    return value;
+    return st->errors;
 }

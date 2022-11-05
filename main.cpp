@@ -7,18 +7,22 @@ int main ()
 
     STACKINIT(st, START_SIZE_OF_STACK);
 
-    for (int i = 0; i < 100; ++i)
-    {
-        StackPush(&st, i);
-    }
+    // (5 - (3 + 3 * 4)) / 2 --> -5
 
-    for (int i = 0; i < 50; ++i)
-    {
-        int value = 0;
+    StackPush(&st, 2);
+    StackPush(&st, 5);
+    StackPush(&st, 3);
+    StackPush(&st, 3);
+    StackPush(&st, 4);
+    Multi(&st);
+    Add(&st);
+    Sub(&st);
+    Div(&st);
 
-        StackPop(&st, &value);
-    }
-    
+    int number = 0;
+
+    Out(&st, &number);
+
     StackDelete(&st);
 
     return 0;
